@@ -32,8 +32,12 @@ const VideoPreview = ({ videoFile, captions, template, onBackToTemplates, onDown
     console.log('🎥 VideoPreview: Setting up video element');
     console.log('🎥 Video file:', videoFile.name, videoFile.size, videoFile.type);
     
+    // Create stable video URL
     const videoUrl = URL.createObjectURL(videoFile);
     console.log('🎥 Created video URL:', videoUrl);
+    
+    // Set video source directly to prevent re-loading
+    video.src = videoUrl;
 
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
@@ -72,12 +76,24 @@ const VideoPreview = ({ videoFile, captions, template, onBackToTemplates, onDown
       console.log('🎥 Video data loaded');
     };
 
+    const handlePlay = () => {
+      console.log('🎥 Video actually started playing');
+      setIsPlaying(true);
+    };
+
+    const handlePause = () => {
+      console.log('🎥 Video actually paused');
+      setIsPlaying(false);
+    };
+
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('canplay', handleCanPlay);
     video.addEventListener('error', handleError);
     video.addEventListener('loadstart', handleLoadStart);
     video.addEventListener('loadeddata', handleLoadedData);
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
@@ -86,9 +102,11 @@ const VideoPreview = ({ videoFile, captions, template, onBackToTemplates, onDown
       video.removeEventListener('error', handleError);
       video.removeEventListener('loadstart', handleLoadStart);
       video.removeEventListener('loadeddata', handleLoadedData);
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
       URL.revokeObjectURL(videoUrl);
     };
-  }, [captions, videoFile]);
+  }, [videoFile]); // Only depend on videoFile, not captions to prevent re-renders
 
   const togglePlayPause = () => {
     const video = videoRef.current;
@@ -198,14 +216,11 @@ const VideoPreview = ({ videoFile, captions, template, onBackToTemplates, onDown
           <div className="aspect-[9/16] bg-black rounded-2xl overflow-hidden relative max-w-md mx-auto">
             <video
               ref={videoRef}
-              src={URL.createObjectURL(videoFile)}
               className="w-full h-full object-cover"
               controls={false}
               preload="metadata"
               muted
               playsInline
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
               onLoadedData={() => console.log('Video data loaded successfully')}
               onCanPlay={() => console.log('Video can start playing')}
               onError={(e) => {
@@ -305,12 +320,13 @@ const VideoPreview = ({ videoFile, captions, template, onBackToTemplates, onDown
                 {editingCaption === caption.id ? (
                   <input
                     type="text"
-                    value={caption.text}
+                    defaultValue={caption.text}
                     className="w-full bg-input border border-border rounded px-3 py-2 text-sm"
                     onBlur={() => setEditingCaption(null)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') setEditingCaption(null);
                     }}
+                    onChange={() => {}} // Fix controlled input warning
                     autoFocus
                   />
                 ) : (
