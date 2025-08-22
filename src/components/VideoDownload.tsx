@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Download, CheckCircle, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Caption {
   id: number;
@@ -23,22 +24,57 @@ const VideoDownload = ({ videoFile, captions, template, onStartOver }: VideoDown
     try {
       setIsProcessing(true);
       
-      // For now, just download the original video
-      // In a full implementation, this would generate a video with burned-in captions
-      const url = URL.createObjectURL(videoFile);
+      // Convert video file to base64 for processing
+      const arrayBuffer = await videoFile.arrayBuffer();
+      const base64Video = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
       
-      // Create download link
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${videoFile.name.split('.')[0]}_captioned.mp4`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Call edge function to process video with captions
+      const { data, error } = await supabase.functions.invoke('generate-video', {
+        body: {
+          videoData: base64Video,
+          captions: captions,
+          template: template
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      // Create download with the processed video
+      // For now, we'll download the original with subtitle file
+      const videoBlob = new Blob([new Uint8Array(atob(data.videoData).split('').map(c => c.charCodeAt(0)))], 
+        { type: 'video/mp4' });
+      const videoUrl = URL.createObjectURL(videoBlob);
       
-      setDownloadUrl(url);
+      // Download the video
+      const videoLink = document.createElement('a');
+      videoLink.href = videoUrl;
+      videoLink.download = `${videoFile.name.split('.')[0]}_captioned.mp4`;
+      document.body.appendChild(videoLink);
+      videoLink.click();
+      document.body.removeChild(videoLink);
+      
+      // Also download the subtitle file
+      const srtBlob = new Blob([data.subtitles], { type: 'text/plain' });
+      const srtUrl = URL.createObjectURL(srtBlob);
+      const srtLink = document.createElement('a');
+      srtLink.href = srtUrl;
+      srtLink.download = `${videoFile.name.split('.')[0]}_captions.srt`;
+      document.body.appendChild(srtLink);
+      srtLink.click();
+      document.body.removeChild(srtLink);
+      
+      setDownloadUrl(videoUrl);
+      
+      // Cleanup URLs
+      setTimeout(() => {
+        URL.revokeObjectURL(videoUrl);
+        URL.revokeObjectURL(srtUrl);
+      }, 1000);
       
     } catch (error) {
-      console.error('Error creating download:', error);
+      console.error('Error generating video:', error);
     } finally {
       setIsProcessing(false);
     }

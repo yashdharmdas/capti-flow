@@ -219,7 +219,6 @@ const VideoPreview = ({ videoFile, captions, template, onBackToTemplates, onDown
               className="w-full h-full object-cover"
               controls={false}
               preload="metadata"
-              muted
               playsInline
               onLoadedData={() => console.log('Video data loaded successfully')}
               onCanPlay={() => console.log('Video can start playing')}
