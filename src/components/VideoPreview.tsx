@@ -28,6 +28,13 @@ const VideoPreview = ({ videoFile, captions, template, onBackToTemplates, onDown
     const video = videoRef.current;
     if (!video) return;
 
+    // Add comprehensive video debugging
+    console.log('🎥 VideoPreview: Setting up video element');
+    console.log('🎥 Video file:', videoFile.name, videoFile.size, videoFile.type);
+    
+    const videoUrl = URL.createObjectURL(videoFile);
+    console.log('🎥 Created video URL:', videoUrl);
+
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
       
@@ -39,50 +46,103 @@ const VideoPreview = ({ videoFile, captions, template, onBackToTemplates, onDown
     };
 
     const handleLoadedMetadata = () => {
+      console.log('🎥 Video metadata loaded - Duration:', video.duration);
       setDuration(video.duration);
+    };
+
+    const handleCanPlay = () => {
+      console.log('🎥 Video can play - ReadyState:', video.readyState);
+    };
+
+    const handleError = (e: Event) => {
+      console.error('🎥 Video error occurred:', e);
+      if (video.error) {
+        console.error('🎥 Video error details:', {
+          code: video.error.code,
+          message: video.error.message
+        });
+      }
+    };
+
+    const handleLoadStart = () => {
+      console.log('🎥 Video load started');
+    };
+
+    const handleLoadedData = () => {
+      console.log('🎥 Video data loaded');
     };
 
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('error', handleError);
+    video.addEventListener('loadstart', handleLoadStart);
+    video.addEventListener('loadeddata', handleLoadedData);
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('error', handleError);
+      video.removeEventListener('loadstart', handleLoadStart);
+      video.removeEventListener('loadeddata', handleLoadedData);
+      URL.revokeObjectURL(videoUrl);
     };
-  }, [captions]);
+  }, [captions, videoFile]);
 
   const togglePlayPause = () => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video) {
+      console.error('🎥 No video element found');
+      return;
+    }
 
-    console.log('Toggle play/pause - Current state:', isPlaying);
-    console.log('Video readyState:', video.readyState);
-    console.log('Video networkState:', video.networkState);
+    console.log('🎥 Toggle play/pause clicked');
+    console.log('🎥 Current playing state:', isPlaying);
+    console.log('🎥 Video readyState:', video.readyState);
+    console.log('🎥 Video networkState:', video.networkState);
+    console.log('🎥 Video currentSrc:', video.currentSrc);
+    console.log('🎥 Video duration:', video.duration);
 
     if (isPlaying) {
+      console.log('🎥 Pausing video');
       video.pause();
+      setIsPlaying(false);
     } else {
+      console.log('🎥 Attempting to play video');
       // Add error handling for play() promise
       const playPromise = video.play();
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
-            console.log('Video play started successfully');
+            console.log('🎥 ✅ Video play started successfully');
             setIsPlaying(true);
           })
           .catch((error) => {
-            console.error('Video play failed:', error);
+            console.error('🎥 ❌ Video play failed:', error);
+            console.log('🎥 Trying to play muted...');
             // Try to play muted if autoplay policy blocked it
             video.muted = true;
             return video.play();
           })
           .then(() => {
-            console.log('Video play started (muted)');
+            console.log('🎥 ✅ Video play started (muted)');
             setIsPlaying(true);
           })
           .catch((error) => {
-            console.error('Video play failed even when muted:', error);
+            console.error('🎥 ❌ Video play failed even when muted:', error);
+            // Check if video has valid source
+            console.log('🎥 Debugging video element:', {
+              src: video.src,
+              currentSrc: video.currentSrc,
+              readyState: video.readyState,
+              networkState: video.networkState,
+              error: video.error
+            });
           });
+      } else {
+        console.log('🎥 Play promise is undefined (older browser)');
+        setIsPlaying(true);
       }
     }
   };
