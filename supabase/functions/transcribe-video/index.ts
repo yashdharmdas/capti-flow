@@ -13,13 +13,24 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let requestBody;
+  try {
+    requestBody = await req.json();
+  } catch (error) {
+    console.error('Error parsing request body:', error);
+    return new Response(
+      JSON.stringify({ error: 'Invalid request body' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    const { videoId, audioData } = await req.json();
+    const { videoId, audioData } = requestBody;
     
     if (!videoId || !audioData) {
       throw new Error('Missing videoId or audioData');
@@ -44,21 +55,21 @@ serve(async (req) => {
     formData.append('response_format', 'verbose_json');
     formData.append('timestamp_granularities[]', 'word');
 
-    console.log('Sending audio to LemonFox Whisper API...');
+    console.log('Sending audio to OpenAI Whisper API...');
 
-    // Call LemonFox Whisper API
-    const whisperResponse = await fetch('https://api.lemonfox.ai/whisper/transcriptions', {
+    // Call OpenAI Whisper API (using OpenAI key for now)
+    const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('WHISPER_API_KEY')}`,
+        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
       },
       body: formData,
     });
 
     if (!whisperResponse.ok) {
       const errorText = await whisperResponse.text();
-      console.error('LemonFox Whisper API error:', errorText);
-      throw new Error(`LemonFox Whisper API error: ${errorText}`);
+      console.error('OpenAI Whisper API error:', errorText);
+      throw new Error(`OpenAI Whisper API error: ${errorText}`);
     }
 
     const transcriptionResult = await whisperResponse.json();
@@ -157,7 +168,7 @@ serve(async (req) => {
 
     // Update video status to failed if we have a videoId
     try {
-      const { videoId } = await req.json();
+      const { videoId } = requestBody;
       if (videoId) {
         const supabaseClient = createClient(
           Deno.env.get('SUPABASE_URL') ?? '',

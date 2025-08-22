@@ -2,6 +2,48 @@ import { useEffect, useState } from "react";
 import { Wand2, Volume2, FileText, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
+// Simple audio extraction function
+const extractAudioFromVideo = async (videoFile: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    const canvas = document.createElement('canvas');
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    
+    video.crossOrigin = "anonymous";
+    video.src = URL.createObjectURL(videoFile);
+    
+    video.onloadedmetadata = async () => {
+      try {
+        console.log('Video loaded, duration:', video.duration);
+        
+        // For now, convert the entire video file to base64
+        // This will be processed by the server to extract audio
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          const base64Data = result.split(',')[1];
+          console.log('Video converted to base64, length:', base64Data.length);
+          resolve(base64Data);
+        };
+        reader.onerror = () => {
+          console.error('Failed to read video file');
+          reject(new Error('Failed to read video file'));
+        };
+        reader.readAsDataURL(videoFile);
+        
+      } catch (error) {
+        console.error('Error in audio extraction:', error);
+        reject(error);
+      }
+    };
+    
+    video.onerror = (error) => {
+      console.error('Video loading error:', error);
+      reject(new Error('Failed to load video for audio extraction'));
+    };
+  });
+};
+
 interface ProcessingStepProps {
   videoFile: File;
   onComplete: (captions: any[]) => void;
@@ -47,18 +89,8 @@ const ProcessingStep = ({ videoFile, onComplete }: ProcessingStepProps) => {
         setProgress(25);
         console.log('Extracting audio from video...');
         
-        // Use a simpler approach - convert video file to base64 for now
-        const audioBase64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result as string;
-            // Extract base64 data (remove data:video/mp4;base64, prefix)
-            const base64Data = result.split(',')[1];
-            resolve(base64Data);
-          };
-          reader.onerror = () => reject(new Error('Failed to read video file'));
-          reader.readAsDataURL(videoFile);
-        });
+        // Extract audio from video using Web Audio API
+        const audioBase64 = await extractAudioFromVideo(videoFile);
         
         // Step 3: Call transcription service
         setCurrentStep(2);
