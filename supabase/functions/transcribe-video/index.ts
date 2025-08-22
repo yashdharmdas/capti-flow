@@ -33,35 +33,35 @@ serve(async (req) => {
       .update({ status: 'processing' })
       .eq('id', videoId);
 
-    // Convert base64 audio to blob for OpenAI
+    // Convert base64 audio to blob for LemonFox Whisper API
     const audioBuffer = Uint8Array.from(atob(audioData), c => c.charCodeAt(0));
     const audioBlob = new Blob([audioBuffer], { type: 'audio/wav' });
 
-    // Prepare form data for OpenAI Whisper API
+    // Prepare form data for LemonFox Whisper API
     const formData = new FormData();
     formData.append('file', audioBlob, 'audio.wav');
     formData.append('model', 'whisper-1');
     formData.append('response_format', 'verbose_json');
     formData.append('timestamp_granularities[]', 'word');
 
-    console.log('Sending audio to OpenAI Whisper API...');
+    console.log('Sending audio to LemonFox Whisper API...');
 
-    // Call OpenAI Whisper API
-    const openAIResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    // Call LemonFox Whisper API
+    const whisperResponse = await fetch('https://api.lemonfox.ai/whisper/transcriptions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'Authorization': `Bearer ${Deno.env.get('WHISPER_API_KEY')}`,
       },
       body: formData,
     });
 
-    if (!openAIResponse.ok) {
-      const errorText = await openAIResponse.text();
-      console.error('OpenAI API error:', errorText);
-      throw new Error(`OpenAI API error: ${errorText}`);
+    if (!whisperResponse.ok) {
+      const errorText = await whisperResponse.text();
+      console.error('LemonFox Whisper API error:', errorText);
+      throw new Error(`LemonFox Whisper API error: ${errorText}`);
     }
 
-    const transcriptionResult = await openAIResponse.json();
+    const transcriptionResult = await whisperResponse.json();
     console.log('Transcription completed:', transcriptionResult.text);
 
     // Process words into caption segments (3-5 words per caption)

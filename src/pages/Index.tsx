@@ -5,6 +5,7 @@ import VideoUpload from "@/components/VideoUpload";
 import TemplateSelector from "@/components/TemplateSelector";
 import VideoPreview from "@/components/VideoPreview";
 import ProcessingStep from "@/components/ProcessingStep";
+import VideoDownload from "@/components/VideoDownload";
 
 export type WorkflowStep = 'hero' | 'upload' | 'processing' | 'templates' | 'preview' | 'download';
 
@@ -115,27 +116,13 @@ const Index = () => {
           />
         )}
         
-        {currentStep === 'download' && (
-          <div className="text-center py-16">
-            <div className="animate-slide-up">
-              <CheckCircle size={64} className="text-success mx-auto mb-6" />
-              <h2 className="text-3xl font-bold mb-4">Video Ready!</h2>
-              <p className="text-muted-foreground mb-8">Your captioned video has been processed successfully.</p>
-              <div className="space-y-4">
-                <button className="btn-hero">
-                  Download Video
-                </button>
-                <div>
-                  <button 
-                    onClick={handleStartOver}
-                    className="btn-ghost"
-                  >
-                    Create Another Video
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+        {currentStep === 'download' && uploadedVideo && (
+          <VideoDownload
+            videoFile={uploadedVideo}
+            captions={generatedCaptions}
+            template={selectedTemplate}
+            onStartOver={handleStartOver}
+          />
         )}
       </div>
     </div>

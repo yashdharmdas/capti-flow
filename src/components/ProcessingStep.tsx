@@ -106,12 +106,35 @@ const ProcessingStep = ({ videoFile, onComplete }: ProcessingStepProps) => {
         // Update progress to show error state
         setProgress(0);
         
-        // Show error and fallback to demo captions
-        const mockCaptions = [
-          { id: 1, text: "Audio processing failed", startTime: 0, endTime: 3 },
-          { id: 2, text: "Using demo captions instead", startTime: 3, endTime: 6 },
-          { id: 3, text: "Please try again with a different video", startTime: 6, endTime: 9 }
-        ];
+        // Show error and fallback to demo captions that match video duration
+        // Get actual video duration
+        const video = document.createElement('video');
+        video.src = URL.createObjectURL(videoFile);
+        
+        const getVideoDuration = (): Promise<number> => {
+          return new Promise((resolve) => {
+            video.onloadedmetadata = () => {
+              resolve(video.duration || 60); // Default to 60 seconds if duration unavailable
+            };
+            video.onerror = () => {
+              resolve(60); // Default fallback
+            };
+          });
+        };
+        
+        const videoDuration = await getVideoDuration();
+        const segmentDuration = 3;
+        const numSegments = Math.ceil(videoDuration / segmentDuration);
+        
+        const mockCaptions = Array.from({ length: numSegments }, (_, index) => ({
+          id: index + 1,
+          text: index === 0 ? "Audio processing failed" : 
+                index === 1 ? "Using demo captions instead" : 
+                index === 2 ? "Please try again with a different video" :
+                `Demo caption ${index + 1}`,
+          startTime: index * segmentDuration,
+          endTime: Math.min((index + 1) * segmentDuration, videoDuration)
+        }));
         
         setTimeout(() => {
           onComplete(mockCaptions);
