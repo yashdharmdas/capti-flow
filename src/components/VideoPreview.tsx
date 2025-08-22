@@ -55,12 +55,36 @@ const VideoPreview = ({ videoFile, captions, template, onBackToTemplates, onDown
     const video = videoRef.current;
     if (!video) return;
 
+    console.log('Toggle play/pause - Current state:', isPlaying);
+    console.log('Video readyState:', video.readyState);
+    console.log('Video networkState:', video.networkState);
+
     if (isPlaying) {
       video.pause();
     } else {
-      video.play();
+      // Add error handling for play() promise
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.log('Video play started successfully');
+            setIsPlaying(true);
+          })
+          .catch((error) => {
+            console.error('Video play failed:', error);
+            // Try to play muted if autoplay policy blocked it
+            video.muted = true;
+            return video.play();
+          })
+          .then(() => {
+            console.log('Video play started (muted)');
+            setIsPlaying(true);
+          })
+          .catch((error) => {
+            console.error('Video play failed even when muted:', error);
+          });
+      }
     }
-    setIsPlaying(!isPlaying);
   };
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -116,8 +140,18 @@ const VideoPreview = ({ videoFile, captions, template, onBackToTemplates, onDown
               ref={videoRef}
               src={URL.createObjectURL(videoFile)}
               className="w-full h-full object-cover"
+              controls={false}
+              preload="metadata"
+              muted
+              playsInline
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
+              onLoadedData={() => console.log('Video data loaded successfully')}
+              onCanPlay={() => console.log('Video can start playing')}
+              onError={(e) => {
+                console.error('Video error:', e);
+                console.error('Error details:', videoRef.current?.error);
+              }}
             />
             
             {/* Caption Overlay */}
