@@ -14,7 +14,80 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      captions: {
+        Row: {
+          created_at: string
+          end_time: number
+          id: string
+          start_time: number
+          text: string
+          video_id: string
+          word_index: number | null
+        }
+        Insert: {
+          created_at?: string
+          end_time: number
+          id?: string
+          start_time: number
+          text: string
+          video_id: string
+          word_index?: number | null
+        }
+        Update: {
+          created_at?: string
+          end_time?: number
+          id?: string
+          start_time?: number
+          text?: string
+          video_id?: string
+          word_index?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "captions_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      videos: {
+        Row: {
+          created_at: string
+          duration: number | null
+          error_message: string | null
+          file_path: string | null
+          file_size: number | null
+          filename: string
+          id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration?: number | null
+          error_message?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          filename: string
+          id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration?: number | null
+          error_message?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          filename?: string
+          id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

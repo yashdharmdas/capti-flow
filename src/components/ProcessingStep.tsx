@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Wand2, Volume2, FileText, CheckCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProcessingStepProps {
   videoFile: File;
@@ -19,38 +20,103 @@ const ProcessingStep = ({ videoFile, onComplete }: ProcessingStepProps) => {
 
   useEffect(() => {
     const processVideo = async () => {
-      for (let i = 0; i < processingSteps.length; i++) {
-        setCurrentStep(i);
-        const step = processingSteps[i];
+      try {
+        // Step 1: Create video record in database
+        setCurrentStep(0);
+        console.log('Creating video record...');
         
-        // Simulate progress during each step
-        const progressIncrement = 100 / processingSteps.length;
-        const stepStartProgress = i * progressIncrement;
+        const { data: videoData, error: videoError } = await supabase
+          .from('videos')
+          .insert({
+            filename: videoFile.name,
+            file_size: videoFile.size,
+            status: 'processing'
+          })
+          .select()
+          .single();
+
+        if (videoError) {
+          throw new Error(`Database error: ${videoError.message}`);
+        }
+
+        const videoId = videoData.id;
+        console.log('Video record created:', videoId);
         
-        const progressInterval = setInterval(() => {
-          setProgress(prev => {
-            const newProgress = Math.min(prev + 2, stepStartProgress + progressIncrement);
-            return newProgress;
+        // Step 2: Extract audio from video
+        setCurrentStep(1);
+        setProgress(25);
+        console.log('Extracting audio from video...');
+        
+        // Use a simpler approach - convert video file to base64 for now
+        const audioBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            // Extract base64 data (remove data:video/mp4;base64, prefix)
+            const base64Data = result.split(',')[1];
+            resolve(base64Data);
+          };
+          reader.onerror = () => reject(new Error('Failed to read video file'));
+          reader.readAsDataURL(videoFile);
+        });
+        
+        // Step 3: Call transcription service
+        setCurrentStep(2);
+        setProgress(50);
+        console.log('Calling transcription service...');
+        
+        const { data: transcriptionData, error: transcriptionError } = await supabase.functions
+          .invoke('transcribe-video', {
+            body: {
+              videoId: videoId,
+              audioData: audioBase64
+            }
           });
-        }, step.duration / 50);
+
+        if (transcriptionError) {
+          throw new Error(`Transcription error: ${transcriptionError.message}`);
+        }
+
+        if (!transcriptionData?.success) {
+          throw new Error(transcriptionData?.error || 'Transcription failed');
+        }
+
+        // Step 4: Finalize captions
+        setCurrentStep(3);
+        setProgress(100);
+        console.log('Finalizing captions...');
         
-        await new Promise(resolve => setTimeout(resolve, step.duration));
-        clearInterval(progressInterval);
-        setProgress((i + 1) * progressIncrement);
+        // Wait a moment for visual feedback
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Convert to expected format for the UI
+        const formattedCaptions = transcriptionData.captions.map((caption: any, index: number) => ({
+          id: index + 1,
+          text: caption.text,
+          startTime: caption.start_time,
+          endTime: caption.end_time
+        }));
+
+        console.log('Caption generation completed:', formattedCaptions);
+        onComplete(formattedCaptions);
+
+      } catch (error) {
+        console.error('Error processing video:', error);
+        
+        // Update progress to show error state
+        setProgress(0);
+        
+        // Show error and fallback to demo captions
+        const mockCaptions = [
+          { id: 1, text: "Audio processing failed", startTime: 0, endTime: 3 },
+          { id: 2, text: "Using demo captions instead", startTime: 3, endTime: 6 },
+          { id: 3, text: "Please try again with a different video", startTime: 6, endTime: 9 }
+        ];
+        
+        setTimeout(() => {
+          onComplete(mockCaptions);
+        }, 2000);
       }
-      
-      // Generate mock captions
-      const mockCaptions = [
-        { id: 1, text: "Welcome to our amazing product demo", startTime: 0, endTime: 3 },
-        { id: 2, text: "This is how it works in practice", startTime: 3, endTime: 6 },
-        { id: 3, text: "You can see the incredible results", startTime: 6, endTime: 9 },
-        { id: 4, text: "Perfect for social media content", startTime: 9, endTime: 12 },
-        { id: 5, text: "Try it yourself today", startTime: 12, endTime: 15 }
-      ];
-      
-      setTimeout(() => {
-        onComplete(mockCaptions);
-      }, 500);
     };
 
     processVideo();
