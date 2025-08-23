@@ -6,37 +6,37 @@
 
 @layer base {
   :root {
-    /* Core Brand Colors - Deep tech aesthetic */
-    --background: 220 13% 9%;
-    --foreground: 210 20% 98%;
+    /* Omnisend-Inspired Modern Color Palette */
+    --background: 0 0% 100%;
+    --foreground: 215 25% 27%;
     
-    --card: 220 13% 11%;
-    --card-foreground: 210 20% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 27%;
     
-    --popover: 220 13% 11%;
-    --popover-foreground: 210 20% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 27%;
     
-    /* Primary - Electric Blue */
-    --primary: 214 100% 59%;
-    --primary-foreground: 220 13% 9%;
-    --primary-glow: 214 100% 70%;
+    /* Primary - Deep Teal */
+    --primary: 174 84% 32%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 174 84% 45%;
     
-    /* Secondary - Deep Purple */
-    --secondary: 259 94% 51%;
-    --secondary-foreground: 210 20% 98%;
-    --secondary-glow: 259 94% 65%;
+    /* Secondary - Dark Navy */
+    --secondary: 215 28% 17%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-glow: 215 28% 25%;
     
-    /* Muted - Subtle grays */
-    --muted: 220 8% 20%;
-    --muted-foreground: 215 20% 65%;
+    /* Muted - Light Grays */
+    --muted: 210 40% 98%;
+    --muted-foreground: 215 16% 47%;
     
-    /* Accent - Vibrant Cyan */
-    --accent: 189 100% 56%;
-    --accent-foreground: 220 13% 9%;
+    /* Accent - Bright Lime Green */
+    --accent: 84 100% 50%;
+    --accent-foreground: 215 25% 27%;
     
-    /* Success - Emerald */
+    /* Success - Green */
     --success: 142 76% 36%;
-    --success-foreground: 210 20% 98%;
+    --success-foreground: 0 0% 100%;
     
     /* Warning - Amber */
     --warning: 38 92% 50%;
@@ -49,11 +49,12 @@
     --input: 220 8% 15%;
     --ring: 214 100% 59%;
     
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
-    --gradient-accent: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--primary-glow)));
-    --gradient-card: linear-gradient(135deg, hsl(var(--card)), hsl(220 8% 15%));
-    --gradient-hero: linear-gradient(135deg, hsl(214 100% 59% / 0.1), hsl(259 94% 51% / 0.1));
+    /* Modern Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-accent: linear-gradient(135deg, hsl(var(--accent)), hsl(84 100% 65%));
+    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%), hsl(210 40% 98%));
+    --gradient-hero: linear-gradient(135deg, hsl(var(--primary) / 0.05), hsl(var(--accent) / 0.05));
+    --gradient-section: linear-gradient(180deg, hsl(0 0% 100%), hsl(210 40% 98%));
     
     /* Shadows */
     --shadow-primary: 0 10px 40px -10px hsl(var(--primary) / 0.4);
@@ -135,7 +136,7 @@
 @layer components {
   /* Custom Button Variants */
   .btn-hero {
-    @apply bg-gradient-to-r from-primary to-secondary text-primary-foreground px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300;
+    @apply bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300;
   }
   
   .btn-secondary {
