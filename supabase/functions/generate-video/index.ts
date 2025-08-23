@@ -17,25 +17,97 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let requestBody;
   try {
-    const { videoData, captions, template } = await req.json();
+    requestBody = await req.json();
+  } catch (parseError) {
+    console.error('Error parsing request body:', parseError);
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: 'Invalid request format. Please ensure JSON is properly formatted.'
+    }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  try {
+    const { videoData, captions, template } = requestBody;
     
-    if (!videoData || !captions) {
-      throw new Error('Missing video data or captions');
+    // Input validation
+    if (!videoData) {
+      throw new Error('Missing video data. Please ensure video file is properly uploaded.');
+    }
+    
+    if (!captions || !Array.isArray(captions) || captions.length === 0) {
+      throw new Error('Missing or invalid captions. Please ensure captions are generated first.');
+    }
+    
+    if (!template) {
+      throw new Error('Missing template selection. Please choose a caption style.');
     }
 
-    console.log(`Generating video with ${captions.length} captions using ${template} template`);
+    console.log(`🎬 Generating video with ${captions.length} captions using "${template}" template`);
 
-    // Convert base64 video data to blob
-    const videoBlob = new Uint8Array(
-      atob(videoData)
-        .split('')
-        .map(char => char.charCodeAt(0))
-    );
+    // Validate video data format
+    try {
+      const testDecode = atob(videoData.substring(0, 100));
+      if (testDecode.length === 0) {
+        throw new Error('Video data appears to be empty');
+      }
+    } catch (decodeError) {
+      throw new Error('Invalid video data format. Please re-upload your video.');
+    }
 
-    // Generate SRT subtitle content
-    const srtContent = generateSRT(captions);
-    console.log('Generated SRT content:', srtContent);
+    // Validate captions format
+    for (let i = 0; i < captions.length; i++) {
+      const caption = captions[i];
+      if (!caption.text || typeof caption.text !== 'string') {
+        throw new Error(`Invalid caption text at position ${i + 1}`);
+      }
+      if (typeof caption.start_time !== 'number' || typeof caption.end_time !== 'number') {
+        throw new Error(`Invalid caption timing at position ${i + 1}`);
+      }
+      if (caption.start_time >= caption.end_time) {
+        throw new Error(`Invalid caption duration at position ${i + 1}: start time must be before end time`);
+      }
+    }
+
+    console.log('✅ Input validation completed');
+
+    // Convert base64 video data to blob with error handling
+    let videoBlob: Uint8Array;
+    try {
+      videoBlob = new Uint8Array(
+        atob(videoData)
+          .split('')
+          .map(char => char.charCodeAt(0))
+      );
+      
+      if (videoBlob.length === 0) {
+        throw new Error('Converted video data is empty');
+      }
+      
+      console.log(`📁 Video data converted: ${videoBlob.length} bytes`);
+    } catch (conversionError) {
+      console.error('Video conversion error:', conversionError);
+      throw new Error('Failed to process video data. Please ensure the video file is not corrupted.');
+    }
+
+    // Generate SRT subtitle content with error handling
+    let srtContent: string;
+    try {
+      srtContent = generateSRT(captions);
+      
+      if (!srtContent || srtContent.trim().length === 0) {
+        throw new Error('Failed to generate subtitle content');
+      }
+      
+      console.log(`📝 Generated SRT content: ${srtContent.split('\n').length} lines`);
+    } catch (srtError) {
+      console.error('SRT generation error:', srtError);
+      throw new Error('Failed to generate subtitle file. Please check your captions.');
+    }
 
     // For now, we'll return the original video with subtitle data
     // In a full implementation, this would use FFmpeg to burn in subtitles
@@ -50,13 +122,41 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
-    console.error('Error generating video:', error);
+  } catch (error: any) {
+    console.error('❌ Error generating video:', error);
+    
+    // Categorize error types for better user feedback
+    let userMessage = 'An unexpected error occurred during video generation';
+    let statusCode = 500;
+    
+    if (error.message.includes('Missing')) {
+      userMessage = error.message;
+      statusCode = 400;
+    } else if (error.message.includes('Invalid')) {
+      userMessage = error.message;
+      statusCode = 400;
+    } else if (error.message.includes('video data')) {
+      userMessage = 'There was a problem processing your video. Please try uploading again.';
+      statusCode = 422;
+    } else if (error.message.includes('captions') || error.message.includes('subtitle')) {
+      userMessage = 'There was a problem with the caption data. Please regenerate captions.';
+      statusCode = 422;
+    } else if (error.message.includes('timeout')) {
+      userMessage = 'Video processing timed out. Please try with a shorter video.';
+      statusCode = 408;
+    } else if (error.message.includes('memory') || error.message.includes('storage')) {
+      userMessage = 'Not enough resources to process this video. Please try with a smaller file.';
+      statusCode = 507;
+    }
+    
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error.message 
+      error: userMessage,
+      stage: 'video_generation',
+      technical_error: error.message,
+      timestamp: new Date().toISOString()
     }), {
-      status: 500,
+      status: statusCode,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
