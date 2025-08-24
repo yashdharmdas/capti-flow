@@ -45,3 +45,6 @@ port = 54330
 
 [functions.transcribe-video]
 verify_jwt = false
+
+[functions.enhance-audio]
+verify_jwt = false

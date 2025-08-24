@@ -14,9 +14,10 @@ interface VideoDownloadProps {
   captions: Caption[];
   template: string;
   onStartOver: () => void;
+  useEnhancedAudio: boolean;
 }
 
-const VideoDownload = ({ videoFile, captions, template, onStartOver }: VideoDownloadProps) => {
+const VideoDownload = ({ videoFile, captions, template, onStartOver, useEnhancedAudio }: VideoDownloadProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
@@ -24,6 +25,13 @@ const VideoDownload = ({ videoFile, captions, template, onStartOver }: VideoDown
     try {
       setIsProcessing(true);
       
+      // Log the intended behavior for enhanced audio download
+      if (useEnhancedAudio) {
+        console.log("Attempting to download video with enhanced audio (server-side processing required).");
+      } else {
+        console.log("Downloading video with original audio.");
+      }
+
       // Convert video file to base64 for processing
       const arrayBuffer = await videoFile.arrayBuffer();
       const base64Video = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));

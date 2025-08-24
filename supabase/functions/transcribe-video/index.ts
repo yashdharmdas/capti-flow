@@ -30,10 +30,10 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    const { videoId, audioData } = requestBody;
+    const { videoId, audioData, videoDuration } = requestBody;
     
-    if (!videoId || !audioData) {
-      throw new Error('Missing videoId or audioData');
+    if (!videoId || !audioData || videoDuration === undefined) {
+      throw new Error('Missing videoId, audioData, or videoDuration');
     }
 
     console.log('Starting transcription for video:', videoId);
@@ -51,78 +51,60 @@ serve(async (req) => {
     // Prepare form data for LemonFox Whisper API
     const formData = new FormData();
     formData.append('file', audioBlob, 'audio.wav');
-    formData.append('model', 'whisper-1');
-    formData.append('response_format', 'verbose_json');
-    formData.append('timestamp_granularities[]', 'word');
+    formData.append('language', 'english');
+    formData.append('response_format', 'json');
 
-    console.log('Sending audio to OpenAI Whisper API...');
+    console.log('Sending audio to Lemonfox Whisper API...');
 
-    // Call OpenAI Whisper API (using OpenAI key for now)
-    const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    // Call Lemonfox Whisper API
+    const whisperResponse = await fetch('https://api.lemonfox.ai/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'Authorization': `Bearer jjfHhdimCVAWdj29SzhyeuWCN7o3beIc`,
       },
       body: formData,
     });
 
     if (!whisperResponse.ok) {
       const errorText = await whisperResponse.text();
-      console.error('OpenAI Whisper API error:', errorText);
-      throw new Error(`OpenAI Whisper API error: ${errorText}`);
+      console.error('Lemonfox Whisper API error:', errorText);
+      throw new Error(`Lemonfox Whisper API error: ${errorText}`);
     }
 
     const transcriptionResult = await whisperResponse.json();
     console.log('Transcription completed:', transcriptionResult.text);
 
-    // Process words into caption segments (3-5 words per caption)
-    const words = transcriptionResult.words || [];
+    const fullText = transcriptionResult.text || '';
+    const words = fullText.split(/\s+/);
     const captions = [];
-    let currentCaption = { words: [], start: 0, end: 0 };
+    const idealWordsPerCaption = 4;
+    let currentWordIndex = 0;
 
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i];
-      
-      if (currentCaption.words.length === 0) {
-        currentCaption.start = word.start;
-      }
-      
-      currentCaption.words.push(word.word);
-      currentCaption.end = word.end;
+    while (currentWordIndex < words.length) {
+      const segmentWords = words.slice(currentWordIndex, currentWordIndex + idealWordsPerCaption);
+      if (segmentWords.length === 0) break;
 
-      // Create caption segment when we have 3-5 words or reach end of words
-      if (currentCaption.words.length >= 3 && (currentCaption.words.length >= 5 || i === words.length - 1)) {
-        captions.push({
-          text: currentCaption.words.join(' ').trim(),
-          start_time: currentCaption.start,
-          end_time: currentCaption.end,
-          word_index: i - currentCaption.words.length + 1
-        });
-        currentCaption = { words: [], start: 0, end: 0 };
+      const text = segmentWords.join(' ').trim();
+      if (text) {
+        captions.push({ text });
       }
+      currentWordIndex += segmentWords.length;
     }
 
-    // If no words were provided, create captions from segments
-    if (words.length === 0 && transcriptionResult.segments) {
-      for (let i = 0; i < transcriptionResult.segments.length; i++) {
-        const segment = transcriptionResult.segments[i];
-        const segmentWords = segment.text.trim().split(' ');
-        
-        // Break long segments into smaller captions
-        for (let j = 0; j < segmentWords.length; j += 4) {
-          const captionWords = segmentWords.slice(j, j + 4);
-          const startRatio = j / segmentWords.length;
-          const endRatio = Math.min((j + 4) / segmentWords.length, 1);
-          const duration = segment.end - segment.start;
-          
-          captions.push({
-            text: captionWords.join(' '),
-            start_time: segment.start + (duration * startRatio),
-            end_time: segment.start + (duration * endRatio),
-            word_index: j
-          });
-        }
+    // Distribute timestamps evenly
+    if (videoDuration > 0 && captions.length > 0) {
+      const timePerCaption = videoDuration / captions.length;
+      for (let i = 0; i < captions.length; i++) {
+        captions[i].start_time = i * timePerCaption;
+        captions[i].end_time = (i + 1) * timePerCaption;
       }
+    } else if (captions.length > 0) {
+        // Fallback if videoDuration is 0 or not provided properly (should not happen with new changes)
+        const defaultTimePerCaption = 3; // 3 seconds per caption fallback
+        for (let i = 0; i < captions.length; i++) {
+            captions[i].start_time = i * defaultTimePerCaption;
+            captions[i].end_time = (i + 1) * defaultTimePerCaption;
+        }
     }
 
     console.log(`Generated ${captions.length} caption segments`);
@@ -134,7 +116,6 @@ serve(async (req) => {
         text: caption.text,
         start_time: caption.start_time,
         end_time: caption.end_time,
-        word_index: caption.word_index
       }));
 
       const { error: captionsError } = await supabaseClient

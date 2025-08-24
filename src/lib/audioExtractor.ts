@@ -3,66 +3,47 @@
  */
 export const extractAudioFromVideo = async (videoFile: File): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const video = document.createElement('video');
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    video.onloadedmetadata = () => {
-      // Create audio context for processing
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const source = audioContext.createMediaElementSource(video);
-      const analyser = audioContext.createAnalyser();
-      const scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
-      
-      source.connect(analyser);
-      analyser.connect(scriptProcessor);
-      scriptProcessor.connect(audioContext.destination);
-      
-      const audioChunks: Float32Array[] = [];
-      let isRecording = false;
-      
-      scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
-        if (isRecording) {
-          const inputBuffer = audioProcessingEvent.inputBuffer;
-          const audioData = inputBuffer.getChannelData(0);
-          audioChunks.push(new Float32Array(audioData));
-        }
-      };
-      
-      video.onplay = () => {
-        isRecording = true;
-      };
-      
-      video.onended = () => {
-        isRecording = false;
-        
-        // Convert audio chunks to WAV format
-        const totalLength = audioChunks.reduce((acc, chunk) => acc + chunk.length, 0);
-        const combinedAudio = new Float32Array(totalLength);
-        let offset = 0;
-        
-        for (const chunk of audioChunks) {
-          combinedAudio.set(chunk, offset);
-          offset += chunk.length;
-        }
-        
-        // Convert to 16-bit PCM WAV
-        const wavBuffer = encodeWAV(combinedAudio, audioContext.sampleRate);
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const fileReader = new FileReader();
+
+    fileReader.onload = async (e) => {
+      const audioData = e.target?.result as ArrayBuffer;
+
+      try {
+        const decodedAudio = await audioContext.decodeAudioData(audioData);
+
+        const offlineContext = new OfflineAudioContext(
+          decodedAudio.numberOfChannels,
+          decodedAudio.length,
+          decodedAudio.sampleRate
+        );
+
+        const source = offlineContext.createBufferSource();
+        source.buffer = decodedAudio;
+
+        source.connect(offlineContext.destination);
+        source.start(0);
+
+        const renderedBuffer = await offlineContext.startRendering();
+
+        // Get the first channel of audio data and encode it to WAV
+        const audioSamples = renderedBuffer.getChannelData(0); // Assuming mono audio
+        const wavBuffer = encodeWAV(audioSamples, renderedBuffer.sampleRate);
         const base64Audio = arrayBufferToBase64(wavBuffer);
-        
+
         resolve(base64Audio);
-      };
-      
-      video.onerror = () => {
-        reject(new Error('Error processing video for audio extraction'));
-      };
-      
-      // Start video playback (muted to extract audio)
-      video.muted = true;
-      video.play();
+      } catch (error) {
+        console.error('Error decoding or rendering audio:', error);
+        reject(new Error('Failed to process audio from video.'));
+      }
     };
-    
-    video.src = URL.createObjectURL(videoFile);
+
+    fileReader.onerror = (error) => {
+      console.error('Error reading video file:', error);
+      reject(new Error('Failed to read video file for audio extraction.'));
+    };
+
+    fileReader.readAsArrayBuffer(videoFile);
   });
 };
 

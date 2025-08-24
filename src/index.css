@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@700&family=Gabarito:wght@700&display=swap');
+
 /* CaptiFlow Design System - Modern Video Editor Aesthetic */
 
 @layer base {
@@ -220,6 +222,29 @@
   /* Gradient Text */
   .gradient-text {
     @apply bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent;
+  }
+
+  .font-anton {
+    font-family: 'Anton', sans-serif !important;
+  }
+
+  .text-stroke-2-black {
+    text-shadow: 
+      -2px -2px 0 #000,  
+      2px -2px 0 #000,
+      -2px 2px 0 #000,
+      2px 2px 0 #000;
+  }
+
+  .text-glow {
+    text-shadow: 
+      0 0 8px rgba(255, 255, 255, 0.8), 
+      0 0 15px rgba(255, 255, 255, 0.6),
+      0 0 20px rgba(255, 255, 255, 0.4);
+  }
+
+  .font-gabarito-important {
+    font-family: 'Gabarito', sans-serif !important;
   }
 }
 

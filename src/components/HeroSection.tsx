@@ -22,8 +22,8 @@ const HeroSection = ({ onStartClick }: HeroSectionProps) => {
 
             {/* Main Headline */}
             <h1 className="text-5xl md:text-7xl font-bold mb-6 text-foreground leading-tight">
-              AI Caption Generation So Good,{" "}
-              <span className="text-primary">It's Addictive</span>
+              AI Captions: Captivating,{" "}
+              <span className="text-primary">Engaging, and Effortless</span>
             </h1>
 
             {/* Subheadline */}

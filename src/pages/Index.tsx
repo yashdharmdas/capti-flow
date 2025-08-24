@@ -14,6 +14,7 @@ const Index = () => {
   const [uploadedVideo, setUploadedVideo] = useState<File | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('minimal');
   const [generatedCaptions, setGeneratedCaptions] = useState<any[]>([]);
+  const [useEnhancedAudioForDownload, setUseEnhancedAudioForDownload] = useState(false);
 
   const steps = [
     { id: 'upload', label: 'Upload Video', icon: Upload },
@@ -112,7 +113,10 @@ const Index = () => {
             captions={generatedCaptions}
             template={selectedTemplate}
             onBackToTemplates={() => setCurrentStep('templates')}
-            onDownload={() => setCurrentStep('download')}
+            onDownload={(useEnhancedAudio) => {
+              setUseEnhancedAudioForDownload(useEnhancedAudio);
+              setCurrentStep('download');
+            }}
           />
         )}
         
@@ -122,6 +126,7 @@ const Index = () => {
             captions={generatedCaptions}
             template={selectedTemplate}
             onStartOver={handleStartOver}
+            useEnhancedAudio={useEnhancedAudioForDownload}
           />
         )}
       </div>

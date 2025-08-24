@@ -1,48 +1,7 @@
 import { useEffect, useState } from "react";
 import { Wand2, Volume2, FileText, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-
-// Simple audio extraction function
-const extractAudioFromVideo = async (videoFile: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const video = document.createElement('video');
-    const canvas = document.createElement('canvas');
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    
-    video.crossOrigin = "anonymous";
-    video.src = URL.createObjectURL(videoFile);
-    
-    video.onloadedmetadata = async () => {
-      try {
-        console.log('Video loaded, duration:', video.duration);
-        
-        // For now, convert the entire video file to base64
-        // This will be processed by the server to extract audio
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          const base64Data = result.split(',')[1];
-          console.log('Video converted to base64, length:', base64Data.length);
-          resolve(base64Data);
-        };
-        reader.onerror = () => {
-          console.error('Failed to read video file');
-          reject(new Error('Failed to read video file'));
-        };
-        reader.readAsDataURL(videoFile);
-        
-      } catch (error) {
-        console.error('Error in audio extraction:', error);
-        reject(error);
-      }
-    };
-    
-    video.onerror = (error) => {
-      console.error('Video loading error:', error);
-      reject(new Error('Failed to load video for audio extraction'));
-    };
-  });
-};
+import { extractAudioFromVideo } from "@/lib/audioExtractor";
 
 interface ProcessingStepProps {
   videoFile: File;
@@ -84,6 +43,21 @@ const ProcessingStep = ({ videoFile, onComplete }: ProcessingStepProps) => {
         const videoId = videoData.id;
         console.log('Video record created:', videoId);
         
+        // Get video duration
+        const getVideoDuration = (): Promise<number> => {
+          return new Promise((resolve) => {
+            const videoElement = document.createElement('video');
+            videoElement.src = URL.createObjectURL(videoFile);
+            videoElement.onloadedmetadata = () => {
+              resolve(videoElement.duration || 60); // Default to 60 seconds if duration unavailable
+            };
+            videoElement.onerror = () => {
+              resolve(60); // Default fallback
+            };
+          });
+        };
+        const videoDuration = await getVideoDuration();
+
         // Step 2: Extract audio from video
         setCurrentStep(1);
         setProgress(25);
@@ -92,6 +66,9 @@ const ProcessingStep = ({ videoFile, onComplete }: ProcessingStepProps) => {
         // Extract audio from video using Web Audio API
         const audioBase64 = await extractAudioFromVideo(videoFile);
         
+        console.log("Audio Base64 length:", audioBase64.length); // Debug log
+        console.log("Video Duration:", videoDuration); // Debug log
+
         // Step 3: Call transcription service
         setCurrentStep(2);
         setProgress(50);
@@ -101,7 +78,8 @@ const ProcessingStep = ({ videoFile, onComplete }: ProcessingStepProps) => {
           .invoke('transcribe-video', {
             body: {
               videoId: videoId,
-              audioData: audioBase64
+              audioData: audioBase64,
+              videoDuration: videoDuration // Pass video duration
             }
           });
 
