@@ -198,44 +198,26 @@ const VideoPreview = ({ videoSource, captions, template, onBackToTemplates, onDo
 
       setIsProcessingEnhancement(true);
       try {
-        const audioBase64 = await extractAudioFromVideo(videoSource); // Pass videoSource directly
-        // Temporarily disable Supabase function invocation for UI/UX preview
-        // const { data, error } = await supabase.functions.invoke('enhance-audio', {
-        //   body: { audioData: audioBase64 },
-        // });
-
-        // if (error) {
-        //   throw new Error(`Supabase function error: ${error.message}`);
-        // }
-        // if (!data?.success || !data?.enhancedAudioBase64) {
-        //   throw new Error(data?.error || 'Audio enhancement failed');
-        // }
-
-        // const enhancedAudioBlob = new Blob(
-        //   [Uint8Array.from(atob(data.enhancedAudioBase64), c => c.charCodeAt(0))],
-        //   { type: 'audio/wav' }
-        // );
-        // const url = URL.createObjectURL(enhancedAudioBlob);
-        // setEnhancedAudioUrl(url);
-        // setIsVoiceEnhanced(true);
-        // if (videoRef.current) {
-        //   setOriginalVideoUrl(videoRef.current.src); // Store original video URL
-        //   videoRef.current.src = url;
-        //   videoRef.current.load();
-        //   videoRef.current.play();
-        // }
-
+        let audioBase64: string;
+        // Support both File and URL string
+        if (typeof videoSource === 'string') {
+          // Fetch the video as a Blob
+          const response = await fetch(videoSource);
+          if (!response.ok) throw new Error('Failed to fetch video for audio extraction.');
+          const blob = await response.blob();
+          audioBase64 = await extractAudioFromVideo(blob as File); // Cast for compatibility
+        } else {
+          // If in the future you support File type, handle here
+          audioBase64 = await extractAudioFromVideo(videoSource);
+        }
         // --- Temporary Placeholder for UI/UX Preview (simulating success) ---
         setEnhancedAudioUrl(videoRef.current?.src || null); // Keep current audio for preview
         setIsVoiceEnhanced(true);
         if (videoRef.current) {
-          // Optionally, play a dummy enhanced audio or just keep current
-          // For now, we'll just set it to true to see the UI change
           videoRef.current.play();
         }
         // --- End Temporary Placeholder ---
-
-      } catch (error) {
+      } catch (error: any) {
         // Revert toggle and show error message
         setIsVoiceEnhanced(false);
         setEnhancedAudioUrl(null);
@@ -363,10 +345,18 @@ const VideoPreview = ({ videoSource, captions, template, onBackToTemplates, onDo
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-background text-foreground p-[5%]">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-80px)] bg-background text-foreground p-0 md:p-8 rounded-2xl shadow-2xl mx-auto animate-fade-in">
       {/* Left Column: Video Player and Controls */}
-      <div className="w-[30%] flex flex-col items-center justify-center p-4 lg:p-8 bg-[#f9fafc] relative">
-        <div className="aspect-[9/16] bg-black rounded-2xl overflow-hidden relative max-w-md w-full">
+      <div className="w-full lg:w-[32%] flex flex-col items-center justify-center p-4 lg:p-8 bg-[#f9fafc] relative rounded-l-2xl border-r border-border shadow-lg">
+        {/* Back Button */}
+        <button
+          onClick={onBackToTemplates}
+          className="absolute top-4 left-4 flex items-center gap-2 btn-ghost z-20"
+        >
+          <ArrowLeft size={18} />
+          <span className="hidden md:inline font-medium">Back</span>
+        </button>
+        <div className="aspect-[9/16] bg-black rounded-2xl overflow-hidden relative max-w-md w-full shadow-xl">
           <video
             ref={videoRef}
             className="w-full h-full object-cover"
@@ -380,49 +370,44 @@ const VideoPreview = ({ videoSource, captions, template, onBackToTemplates, onDo
               console.error('Error details:', videoRef.current?.error);
             }}
           />
-          
           {/* Caption Overlay */}
           {currentCaption ? (
             <div 
-              className="absolute left-4 right-4 text-center z-10"
+              className="absolute left-4 right-4 text-center z-10 animate-fade-in"
               style={{ bottom: `${captionPosition}%` }}
             >
               <div 
-                className="text-white font-semibold" // Base styles for all captions
+                className="text-white font-semibold drop-shadow-lg"
                 style={{ fontSize: `${fontSize}px` }}
               >
                 {renderStyledCaptionText(currentCaption.text, selectedCaptionStyle, currentCaption)}
               </div>
             </div>
           ) : (
-            <p className="absolute bottom-1/2 left-1/2 -translate-x-1/2 text-red-500 z-10">DEBUG: No Current Caption</p> // Debugging line
+            <p className="absolute bottom-1/2 left-1/2 -translate-x-1/2 text-red-500 z-10">DEBUG: No Current Caption</p>
           )}
         </div>
-
-        {/* Video Controls (Moved below video, centered) */}
-        <div className="bg-card rounded-lg border border-border p-4 w-full max-w-md mx-auto mt-4">
-          <div className="flex items-center space-x-4 mb-4">
+        {/* Video Controls */}
+        <div className="bg-card rounded-xl border border-border p-4 w-full max-w-md mx-auto mt-6 shadow-md">
+          <div className="flex items-center space-x-4 mb-4 justify-center">
             <button
               onClick={togglePlayPause}
-              className="bg-primary text-primary-foreground rounded-full p-3 hover:bg-primary/90 transition-colors"
+              className="btn-hero rounded-full p-3 w-12 h-12 flex items-center justify-center"
             >
-              {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+              {isPlaying ? <Pause size={22} /> : <Play size={22} />}
             </button>
-            
             <button
               onClick={restartVideo}
-              className="btn-ghost"
+              className="btn-ghost w-10 h-10 flex items-center justify-center"
             >
-              <RotateCcw size={16} />
+              <RotateCcw size={18} />
             </button>
-
             <div className="flex items-center text-sm text-muted-foreground">
               <span>{formatTime(currentTime)}</span>
               <span className="mx-2">/</span>
               <span>{formatTime(duration)}</span>
             </div>
           </div>
-
           {/* Timeline */}
           <div 
             className="video-timeline cursor-pointer"
@@ -433,15 +418,12 @@ const VideoPreview = ({ videoSource, captions, template, onBackToTemplates, onDo
               style={{ width: `${(currentTime / duration) * 100}%` }}
             />
           </div>
-
-          {/* Voice Enhancer Toggle & Compare Audio Button (Removed from here, moved to right sidebar) */}
         </div>
       </div>
-
       {/* Right Column: Editing Sidebar */}
-      <div className="w-[70%] border-l border-border bg-card p-4 lg:p-6 overflow-y-auto">
+      <div className="w-full lg:w-[68%] border-l border-border bg-card p-4 lg:p-10 overflow-y-auto rounded-r-2xl flex flex-col gap-6">
         <Tabs defaultValue="choose-style" className="w-full" onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-2 mb-2">
             <TabsTrigger value="choose-style">Choose Style</TabsTrigger>
             <TabsTrigger value="edit-captions">Edit Captions</TabsTrigger>
           </TabsList>
@@ -453,7 +435,7 @@ const VideoPreview = ({ videoSource, captions, template, onBackToTemplates, onDo
                   key={style.id}
                   className={`p-4 rounded-lg border text-center transition-all duration-200
                     ${selectedCaptionStyle === style.name
-                      ? 'border-primary bg-primary/10 text-primary'
+                      ? 'border-primary bg-primary/10 text-primary shadow-lg'
                       : 'border-border bg-card/50 hover:bg-card'
                     }`}
                   onClick={() => setSelectedCaptionStyle(style.name)}
@@ -473,14 +455,13 @@ const VideoPreview = ({ videoSource, captions, template, onBackToTemplates, onDo
                 </button>
               </div>
             </div>
-
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {captions.map((caption) => (
                 <div
                   key={caption.id}
                   className={`p-4 rounded-lg border transition-all duration-200 ${
                     currentCaption?.id === caption.id
-                      ? 'border-primary bg-primary/5'
+                      ? 'border-primary bg-primary/5 shadow-md'
                       : 'border-border bg-card/50 hover:bg-card'
                   }`}
                 >
@@ -495,7 +476,6 @@ const VideoPreview = ({ videoSource, captions, template, onBackToTemplates, onDo
                       <Edit3 size={14} />
                     </button>
                   </div>
-                  
                   {editingCaption === caption.id ? (
                     <input
                       type="text"
@@ -516,47 +496,43 @@ const VideoPreview = ({ videoSource, captions, template, onBackToTemplates, onDo
             </div>
           </TabsContent>
         </Tabs>
-
         {/* Global Caption Settings - Always visible */}
-        <div className="mt-4 p-4 bg-card rounded-lg border border-border space-y-4">
-          <h4 className="font-semibold text-lg mb-2">Caption Settings</h4>
-          {/* Caption Position Control */}
-          <div className="flex items-center space-x-4">
-            <label htmlFor="caption-position" className="w-24 text-sm">Position:</label>
-            <input
-              id="caption-position"
-              type="range"
-              min="0"
-              max="100"
-              value={captionPosition}
-              onChange={(e) => setCaptionPosition(Number(e.target.value))}
-              className="w-full accent-primary"
-            />
-            <span className="text-sm w-12 text-right">{captionPosition}%</span>
+        <div className="p-6 bg-background rounded-xl border border-border flex flex-col gap-6 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex flex-col gap-2 md:w-1/2">
+              <label htmlFor="caption-position" className="text-sm font-medium">Position</label>
+              <input
+                id="caption-position"
+                type="range"
+                min="0"
+                max="100"
+                value={captionPosition}
+                onChange={(e) => setCaptionPosition(Number(e.target.value))}
+                className="w-full accent-primary"
+              />
+              <span className="text-xs text-muted-foreground">{captionPosition}% from bottom</span>
+            </div>
+            <div className="flex flex-col gap-2 md:w-1/2">
+              <label htmlFor="font-size" className="text-sm font-medium">Font Size</label>
+              <input
+                id="font-size"
+                type="range"
+                min="10"
+                max="100"
+                value={fontSize}
+                onChange={(e) => setFontSize(Number(e.target.value))}
+                className="w-full accent-primary"
+              />
+              <span className="text-xs text-muted-foreground">{fontSize}px</span>
+            </div>
           </div>
-
-          {/* Font Size Control */}
-          <div className="flex items-center space-x-4">
-            <label htmlFor="font-size" className="w-24 text-sm">Font Size:</label>
-            <input
-              id="font-size"
-              type="range"
-              min="10"
-              max="100"
-              value={fontSize}
-              onChange={(e) => setFontSize(Number(e.target.value))}
-              className="w-full accent-primary"
-            />
-            <span className="text-sm w-12 text-right">{fontSize}px</span>
-          </div>
-
           {/* Voice Enhancer Toggle */}
-          <div className="flex items-center justify-between mt-4">
-            <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center gap-3">
               <Settings size={20} className="text-muted-foreground" />
               <div>
                 <p className="font-medium">Voice Enhancer</p>
-                <p className="text-sm text-muted-foreground">Improve audio clarity and remove background noise</p>
+                <p className="text-xs text-muted-foreground">Improve audio clarity and remove background noise</p>
               </div>
             </div>
             {isProcessingEnhancement ? (
@@ -569,7 +545,6 @@ const VideoPreview = ({ videoSource, captions, template, onBackToTemplates, onDo
               />
             )}
           </div>
-
           {/* Compare Audio Button */}
           {isVoiceEnhanced && (
             <button
@@ -580,9 +555,8 @@ const VideoPreview = ({ videoSource, captions, template, onBackToTemplates, onDo
             </button>
           )}
         </div>
-
         {/* Export Options */}
-        <div className="bg-card rounded-lg border border-border p-4 mt-6">
+        <div className="bg-background rounded-xl border border-border p-6 shadow-md">
           <h3 className="font-semibold text-lg mb-4">Export Settings</h3>
           <div className="space-y-3 mb-6">
             <div className="flex justify-between text-sm">
@@ -598,12 +572,11 @@ const VideoPreview = ({ videoSource, captions, template, onBackToTemplates, onDo
               <span className="text-muted-foreground">Embedded</span>
             </div>
           </div>
-
           {/* Action Buttons */}
           <div className="space-y-3">
             <button 
               onClick={() => onDownload(isVoiceEnhanced)}
-              className="btn-hero w-full"
+              className="btn-hero w-full flex items-center justify-center gap-2"
             >
               <Download className="mr-2" size={20} />
               Download Video
