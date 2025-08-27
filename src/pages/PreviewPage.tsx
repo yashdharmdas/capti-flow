@@ -17,7 +17,7 @@ const PreviewPage = () => {
     { id: 8, text: "what they would do if they were", startTime: 18, endTime: 21, highlightedWord: "do" },
   ];
 
-  const mockTemplate = "Lewis"; // Or any default template you prefer for preview
+  const mockTemplate = "Stellar"; // Use Stellar for explicit Anton font preview
 
   const handleBackToTemplates = () => {
     console.log("Back to templates (mock function)");

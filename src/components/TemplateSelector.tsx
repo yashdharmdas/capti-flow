@@ -8,6 +8,13 @@ interface TemplateSelectorProps {
 
 const templates = [
   {
+    id: 'stellar',
+    name: 'Stellar',
+    description: 'Bold Anton font for maximum impact',
+    preview: '', // Remove preview string for utility class
+    color: 'from-gray-900 to-gray-700'
+  },
+  {
     id: 'minimal',
     name: 'Minimal Clean',
     description: 'Simple white text with subtle shadow',
@@ -86,9 +93,15 @@ const TemplateSelector = ({ onSelect, selectedTemplate }: TemplateSelectorProps)
               
               {/* Caption Preview */}
               <div className="absolute bottom-4 left-4 right-4 text-center">
-                <p className={template.preview}>
-                  Perfect for social media
-                </p>
+                {template.id === 'stellar' ? (
+                  <p className="font-anton text-3xl font-bold text-white">
+                    Perfect for social media
+                  </p>
+                ) : (
+                  <p className={template.preview}>
+                    Perfect for social media
+                  </p>
+                )}
               </div>
               
               {/* Selection Indicator */}

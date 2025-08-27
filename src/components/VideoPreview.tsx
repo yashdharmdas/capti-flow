@@ -294,7 +294,7 @@ const VideoPreview = ({ videoSource, captions, template, onBackToTemplates, onDo
     if (style === "Stellar" && currentCaption?.highlightedWord) {
       const words = text.split(' ');
       return (
-        <div className="font-anton uppercase text-white"> 
+        <div className="font-anton uppercase text-white tracking-wider"> 
           {words.map((word, index) => (
             <span 
               key={index}
@@ -307,6 +307,13 @@ const VideoPreview = ({ videoSource, captions, template, onBackToTemplates, onDo
               {word}{" "}
             </span>
           ))}
+        </div>
+      );
+    } else if (style === "Stellar") {
+      // If no highlighted word, still use Anton font
+      return (
+        <div className="font-anton uppercase text-white tracking-wider">
+          {text}
         </div>
       );
     } else if (style === "Cosmo" && currentCaption?.highlightedWord) { // New: Cosmo style
